@@ -44,11 +44,11 @@ fileupload:
 #### 三、项目截图
 
 - 首页  
-  ![首页](./doc/img/图1.png)
+  ![首页](https://image.bestgcc.cn/github/EasyFileManager/图1.png)
 - 创建文件夹  
-  ![创建文件夹](./doc/img/图2.png)
+  ![创建文件夹](https://image.bestgcc.cn/github/EasyFileManager/图2.png)
 - 文件操作  
-  ![文件操作](./doc/img/图3.png)
+  ![文件操作](https://image.bestgcc.cn/github/EasyFileManager/图3.png)
 - 上传文件  
-  ![上传文件](./doc/img/图4.png)
+  ![上传文件](https://image.bestgcc.cn/github/EasyFileManager/图4.png)
 
