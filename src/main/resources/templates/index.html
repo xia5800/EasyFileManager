@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>文件管理</title>
+    <link href="${ctxPath}/assets/images/favicon.ico" rel="icon">
+    <link rel="stylesheet" href="${ctxPath}/assets/libs/layui/css/layui.css"/>
+    <link rel="stylesheet" href="${ctxPath}/assets/module/admin.css?v=318"/>
+    <link rel="stylesheet" href="${ctxPath}/plug-in/font-awesome-4.7.0/css/font-awesome.css">
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style>
+        .tb-img-circle {
+            width: 40px;
+            height: 40px;
+            cursor: zoom-in;
+        }
+        .prohibit-to-choose{
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .text-anim-180 {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+<!-- 正文开始 -->
+<div class="layui-fluid">
+    <div class="layui-card">
+        <div class="layui-card-header prohibit-to-choose">
+            <div style="float: left;">
+                <div id="route" class="layui-hide" data-folder-id="${folderId!}" data-folder-path="${folderPath!}"></div>
+                <a id="preRoute" data-folder-id="" data-folder-path="">返回上级</a> |
+                <span class="layui-breadcrumb" lay-filter="route"  lay-separator=">">
+                  <a href="">全部文件</a>
+                </span>
+            </div>
+            <div style="float: right">已全部加载，共<b class="total">0</b>个</div>
+        </div>
+        <div id="tableCard" class="layui-card-body table-tool-mini full-table">
+            <!-- 表格工具栏 -->
+            <form class="layui-form toolbar">
+                <div class="layui-form-item">
+                    <div class="layui-inline">
+                        <div class="dropdown-menu">
+                            <a class="layui-btn icon-btn">
+                                &nbsp;<i class="layui-icon">&#xe681;</i>上传
+                            </a>
+                            <ul class="dropdown-menu-nav">
+                                <li><a id="upload_file">上传文件</a></li>
+                                <li><a id="upload_folder">上传文件夹</a></li>
+                            </ul>
+                        </div>
+                        <button id="addFolder" type="button" class="layui-btn icon-btn layui-btn-primary"> <i class="layui-icon">&#xe61f;</i>新建文件夹 </button>
+                    </div>
+                    <div class="pull-right">
+                        <div class="layui-inline">
+                            <input name="name" class="layui-input" placeholder="输入文件|文件夹名"/>
+                        </div>
+                        <div class="layui-inline">
+                            <button class="layui-btn icon-btn" lay-filter="fileTbSearch" lay-submit>
+                                <i class="layui-icon">&#xe615;</i>搜索
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+            <!-- 数据表格 -->
+            <table id="fileTable" lay-filter="fileTable"></table>
+        </div>
+    </div>
+</div>
+<!--------------------------------------------------表格字段格式化-------------------------------------------------------->
+<!-------------------------------------------------表格字段格式化end------------------------------------------------------>
+
+<!------------------------------------------------------弹窗------------------------------------------------------------>
+<!-- 创建/修改文件夹 -->
+<script type="text/html" id="editFolder">
+    <form id="editFolderForm" lay-filter="editFolderForm" class="layui-form model-form">
+        <input name="folderParentId" type="hidden"/>
+        <input name="folderPath" type="hidden"/>
+        <div class="layui-form-item">
+            <label class="layui-form-label layui-form-required">目录名称:</label>
+            <div class="layui-input-block">
+                <input name="folderName" placeholder="请输入目录名称" class="layui-input"
+                       lay-verify="required" required/>
+            </div>
+        </div>
+        <div class="layui-form-item text-right">
+            <button class="layui-btn" lay-filter="editFolderSubmit" lay-submit>保存</button>
+            <button class="layui-btn layui-btn-primary" type="button" ew-event="closeDialog">取消</button>
+        </div>
+    </form>
+</script>
+<!-- 修改文件 -->
+<script type="text/html" id="editFile">
+    <form id="editFileForm" lay-filter="editFileForm" class="layui-form model-form">
+        <input name="id" type="hidden"/>
+        <div class="layui-form-item">
+            <label class="layui-form-label layui-form-required">文件名称:</label>
+            <div class="layui-input-block">
+                <input name="fileName" placeholder="请输入文件名称" class="layui-input"
+                       lay-verify="required" required/>
+            </div>
+        </div>
+        <div class="layui-form-item text-right">
+            <button class="layui-btn" lay-filter="editFileSubmit" lay-submit>保存</button>
+            <button class="layui-btn layui-btn-primary" type="button" ew-event="closeDialog">取消</button>
+        </div>
+    </form>
+</script>
+<!----------------------------------------------------弹窗end----------------------------------------------------------->
+
+<!-- js部分 -->
+<script type="text/javascript" src="${ctxPath}/assets/libs/layui/layui.js"></script>
+<script type="text/javascript" src="${ctxPath}/assets/js/common.js?v=318"></script>
+<script type="text/javascript" src="${ctxPath}/assets/js/custom.js?v=318"></script>
+<script>
+    layui.use(['layer', 'form', 'table', 'tableX', 'admin','layUploader', 'element', 'dropdown', 'contextMenu'], function () {
+        var $ = layui.jquery;
+        var form = layui.form;
+        var admin = layui.admin;
+        var table = layui.table;
+        var tableX = layui.tableX;
+        var layUploader = layui.layUploader;
+        /* 渲染表格 */
+        var insTb = table.render({
+            skin: 'line',
+            size: 'lg',
+            event: false,
+            elem: '#fileTable',
+            url: '/file/list',
+            height: 'full-137',
+            cols: [[
+                {type: 'checkbox'},
+                {field: 'name', title: '文件名', templet: fileNameFormat, event: 'openFileFolder', width: '70%', unresize: true, sort: true},
+                {field: 'size', title: '大小', templet: fileSizeFormat, width: '10%', unresize: true, sort: true},
+                {field: 'updateTime', title: '修改日期',  width: '17.1%', unresize: true, sort: true}
+            ]],
+            done: function(res, curr, count){
+                $('.total').text(res.data.length);
+                tableX.bindCtxMenu('fileTable', [{
+                    icon: 'layui-icon layui-icon-upload-drag text-anim-180',
+                    name: '下载',
+                    click: function (d) {
+                        if (d.fileType === 'dir') {
+                            layer.msg("暂时不能下载文件夹", {icon: 6, time: 1500});
+                        } else {
+                            downloadFile(d);
+                        }
+                    },
+                    hr: true
+                }, {
+                    icon: 'layui-icon layui-icon-edit',
+                    name: '重命名',
+                    click: function (d) {
+                        if(d.fileType === 'dir') {
+                            editFolder(d);
+                        }else{
+                            editFile(d);
+                        }
+                    }
+                }, {
+                    icon: 'layui-icon layui-icon-delete',
+                    name: '删除',
+                    click: function (d) {
+                        if(d.fileType === 'dir') {
+                            delFolder(d);
+                        }else{
+                            delFile(d);
+                        }
+                    }
+                }]);
+            }
+        });
+
+
+        /* ---------------------------------------------表格字段格式化------------------------------------------------ */
+        /* 文件名字段格式化 */
+        function fileNameFormat(d) {
+            var html = '';
+            var fileType = d.fileType === 'dir'? d.fileType : getFileType(d.fileType);
+            if(fileType !== 'img'){
+                html = '<img class="tb-img-circle" src="${ctxPath}/assets/images/file-img/'+fileType+'.png">';
+            }else{
+                html = '<img class="tb-img-circle" data-index="'+(d.LAY_INDEX - 1)+'" tb-img src="/file/'+d.id+'">';
+            }
+            html += '&nbsp;&nbsp;<span>'+d.name+'</span>';
+            return html
+        }
+
+
+        /* 文件大小字段格式化 */
+        function fileSizeFormat(d) {
+            if(d.size === '') return '-';
+            var unitArr = ["B","KB","MB","GB","TB","PB","EB","ZB","YB"];
+            var index = 0;
+            var srcsize = parseFloat(d.size);
+            index = Math.floor(Math.log(srcsize) / Math.log(1024));
+            var size = srcsize / Math.pow(1024, index);
+            size = size.toFixed(2);//保留的小数位数
+            return size + unitArr[index];
+        }
+        /* ---------------------------------------------表格字段格式化 end-------------------------------------------- */
+
+        /* ---------------------------------------------表格事件监听-------------------------------------------------- */
+        /* 表格搜索 */
+        form.on('submit(fileTbSearch)', function (data) {
+            insTb.reload({where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        /* 监听单元格事件 */
+        table.on('tool(fileTable)', function(obj){
+            var data = obj.data;
+            if(obj.event === 'openFileFolder'){
+                // 进入文件夹
+                if(data.fileType === 'dir') {
+                    var html = '<span lay-separator="">&gt;</span>';
+                    html += '<a class="go-folder"';
+                    html += '   data-folder-id="'+data.id+'"';
+                    html += '   data-folder-path="'+data.folderPath+'"';
+                    html += '   data-parent-id="'+data.parentId+'">'+data.name+'</a>'
+                    $(".layui-breadcrumb").append(html);
+
+                    $("#route").attr("data-folder-id", data.id);
+                    $("#route").attr("data-folder-path", data.folderPath);
+
+                    $("a.go-folder").click(function () {
+                        var folderId = $(this).attr("data-folder-id");
+                        var folderPath = $(this).attr("data-folder-path");
+                        $("#route").attr("data-folder-id", folderId);
+                        $("#route").attr("data-folder-path", folderPath);
+
+                        // 删除兄弟节点
+                        $(this).nextAll('a.go-folder').remove();
+                        $(this).nextAll('span').remove();
+                        insTb.reload({where: {folderId: folderId}});
+                    });
+                    // 返回上级
+                    $("#preRoute").attr("data-folder-id", data.parentId)
+                    insTb.reload({where: {folderId: data.id}});
+                }
+                // 打开非图片文件
+                else {
+                    layer.confirm('此文件类型可能为无法识别的类型，确定要打开吗？', {
+                        title: '温馨提示',
+                        area: '260px',
+                        shade: .1
+                    }, function (index) {
+                        layer.close(index);
+                        window.open('/file/'+data.id);
+                    });
+                }
+            }
+        });
+
+        /* 返回上级 */
+        $("#preRoute").click(function () {
+            var folderId = $(this).attr("data-folder-id");
+            if (!folderId) {
+                folderId = '1';
+            }
+            if (folderId !== '1') {
+                $(".layui-breadcrumb").find('a:last').remove();
+                $(".layui-breadcrumb").find('span:last').remove();
+                var breadcrumbList = $(".layui-breadcrumb").find("a[data-folder-id='" + folderId + "']");
+                var parentId = breadcrumbList.attr("data-parent-id");
+                $(this).attr("data-folder-id", parentId);
+            }else{
+                $(".layui-breadcrumb").find('.go-folder:last').remove();
+                $(".layui-breadcrumb").find('span:last').remove();
+            }
+
+            insTb.reload({where: {folderId: folderId}});
+        });
+
+        /* 创建文件夹 */
+        $("#addFolder").click(function () {
+            createFolder();
+        })
+
+        /* 上传文件 */
+        $("#upload_file").click(function () {
+            var folderId = $("#route").attr("data-folder-id");
+            var path = $("#route").attr("data-folder-path");
+            openUploadFileModel(folderId, path);
+        });
+
+        /* 上传文件夹 */
+        $("#upload_folder").click(function () {
+            var folderId = $("#route").attr("data-folder-id");
+            var path = $("#route").attr("data-folder-path");
+            openUploadFolderModel(folderId, path);
+        });
+
+        /* 点击图片放大 */
+        $(document).off('click.tbImg').on('click.tbImg', '[tb-img]', function () {
+            var imgList = table.cache['fileTable'].map(function (d) {
+                return {
+                    alt: d.name,
+                    src: '/file/'+d.id
+                }
+            });
+            layer.photos({photos: {data: imgList, start: $(this).data('index')},anim: -1, shade: .1, closeBtn: true});
+        });
+        /* ---------------------------------------------表格事件监听end----------------------------------------------- */
+
+
+        /* ------------------------------------------------表格弹窗--------------------------------------------------- */
+        /* 创建文件夹 */
+        function createFolder() {
+            admin.open({
+                type: 1,
+                title: '创建目录',
+                content: $('#editFolder').html(),
+                success: function (layero, dIndex) {
+                    var folderId = $("#route").attr("data-folder-id");
+                    var folderPath = $("#route").attr("data-folder-path");
+                    // 回显表单数据
+                    form.val('editFolderForm', {folderParentId : folderId, folderPath: folderPath});
+                    // 表单提交事件
+                    form.on('submit(editFolderSubmit)', function (data) {
+                        if(data.field.folderPath !== "") {
+                            data.field.folderPath = data.field.folderPath + '/' + data.field.folderName;
+                        }else{
+                            data.field.folderPath = data.field.folderName;
+                        }
+                        var loadIndex = layer.load(2);
+                        $.post("/folder/createFolder", data.field, function (res) {
+                            layer.close(loadIndex);
+                            if (200 === res.code) {
+                                layer.close(dIndex);
+                                layer.msg(res.msg, {icon: 1});
+                                insTb.reload({where: {folderId: folderId}});
+                            } else {
+                                layer.msg(res.msg, {icon: 2, anim: 6});
+                            }
+                        },'json').fail(function (error) {
+                            layer.msg(error.responseJSON.message, {icon:2});
+                            layer.close(loadIndex);
+                        });
+                        return false;
+                    });
+                    // 禁止弹窗出现滚动条
+                    $(layero).children('.layui-layer-content').css('overflow', 'visible');
+                }
+            });
+        }
+        /* 修改文件夹名称 */
+        function editFolder(mData) {
+            admin.open({
+                type: 1,
+                title: '修改目录名',
+                content: $('#editFolder').html(),
+                success: function (layero, dIndex) {
+                    var folderId = $("#route").attr("data-folder-id");
+                    // 回显表单数据
+                    form.val('editFolderForm', {folderParentId : mData.parentId, folderPath: mData.folderPath, folderName: mData.name});
+                    // 表单提交事件
+                    form.on('submit(editFolderSubmit)', function (data) {
+                        data.field.folderId = mData.id;
+                        var loadIndex = layer.load(2);
+                        $.post("/folder/editFolder", data.field, function (res) {
+                            layer.close(loadIndex);
+                            if (200 === res.code) {
+                                layer.close(dIndex);
+                                layer.msg(res.msg, {icon: 1});
+                                insTb.reload({where: {folderId: folderId}});
+                            } else {
+                                layer.msg(res.msg, {icon: 2, anim: 6});
+                            }
+                        },'json').fail(function (error) {
+                            layer.msg(error.responseJSON.message, {icon:2});
+                            layer.close(loadIndex);
+                        });
+                        return false;
+                    });
+                    // 禁止弹窗出现滚动条
+                    $(layero).children('.layui-layer-content').css('overflow', 'visible');
+                }
+            });
+        }
+        /* 修改文件名称 */
+        function editFile(mData) {
+            admin.open({
+                type: 1,
+                title: '修改文件名',
+                content: $('#editFile').html(),
+                success: function (layero, dIndex) {
+                    var folderId = $("#route").attr("data-folder-id");
+                    // 回显表单数据
+                    form.val('editFileForm', {id : mData.id, fileName: mData.name});
+                    // 表单提交事件
+                    form.on('submit(editFileSubmit)', function (data) {
+                        var loadIndex = layer.load(2);
+                        $.post("/file/editFile", data.field, function (res) {
+                            layer.close(loadIndex);
+                            if (200 === res.code) {
+                                layer.close(dIndex);
+                                layer.msg(res.msg, {icon: 1});
+                                insTb.reload({where: {folderId: folderId}});
+                            } else {
+                                layer.msg(res.msg, {icon: 2, anim: 6});
+                            }
+                        },'json').fail(function (error) {
+                            layer.msg(error.responseJSON.message, {icon:2});
+                            layer.close(loadIndex);
+                        });
+                        return false;
+                    });
+                    // 禁止弹窗出现滚动条
+                    $(layero).children('.layui-layer-content').css('overflow', 'visible');
+                }
+            });
+        }
+        /* 删除文件夹及其子文件夹 */
+        function delFolder(mData) {
+            layer.confirm('确定要删除“' + mData.name + '”吗？', {
+                shade: .1,
+                skin: 'layui-layer-admin'
+            }, function (i) {
+                layer.close(i);
+                layer.load(2);
+                $.post('/folder/delFolder', {
+                    folderId: mData.id
+                }, function (res) {
+                    layer.closeAll('loading');
+                    if (res.code === 200) {
+                        layer.msg(res.msg, {icon: 1});
+                        insTb.reload();
+                    } else {
+                        layer.msg(res.msg, {icon: 2});
+                    }
+                }, 'json').fail(function (error) {
+                    layer.msg(error.responseJSON.message, {icon:2});
+                    layer.closeAll('loading');
+                });
+            });
+        }
+        /* 删除文件 */
+        function delFile(mData) {
+            layer.confirm('确定要删除“' + mData.name + '”吗？', {
+                shade: .1,
+                skin: 'layui-layer-admin'
+            }, function (i) {
+                layer.close(i);
+                layer.load(2);
+                $.post('/file/delFile', {
+                    id: mData.id
+                }, function (res) {
+                    layer.closeAll('loading');
+                    if (res.code === 200) {
+                        layer.msg(res.msg, {icon: 1});
+                        insTb.reload();
+                    } else {
+                        layer.msg(res.msg, {icon: 2});
+                    }
+                }, 'json').fail(function (error) {
+                    layer.msg(error.responseJSON.message, {icon:2});
+                    layer.closeAll('loading');
+                });
+            });
+        }
+        /* 下载文件 */
+        function downloadFile(mData) {
+            layer.confirm('确定要下载“' + mData.name + '”吗？', {
+                shade: .1,
+                skin: 'layui-layer-admin'
+            }, function (i) {
+                layer.close(i);
+                window.open('/file/download/'+mData.id);
+            });
+        }
+
+        /* 上传文件 */
+        function openUploadFileModel(folderId, path) {
+            layUploader.render({
+                folderId: folderId,                    // 当前所在目录id，必填
+                path: path,                            // 当前所在目录的相对路径，必填
+                refresh: insTb,                        // 关闭窗口刷新表格数据，可选
+                url: '/file/upload',                   // 上传文件服务器地址，必填
+                fileMaxSize: 2 * 1024,                 // 单个文件大小最大值。单位M，可选
+                chunkSize: 5,                          // 分片大小。单位M，可选
+                fileNumLimit: 500,                     // 单次选择上限500个文件，可选
+                // webkitdirectory: true               // 是否文件夹上传，可选
+            });
+        }
+
+        /* 上传文件夹 */
+        function openUploadFolderModel(folderId, path) {
+            layUploader.render({
+                folderId: folderId,                    // 当前所在目录id，必填
+                path: path,                            // 当前所在目录的相对路径，必填
+                refresh: insTb,                        // 关闭窗口，刷新表格，可选
+                url: 'file/upload',                    // 上传文件服务器地址，必填
+                fileMaxSize: 2 * 1024,                 // 单个文件大小最大值。单位M，可选
+                chunkSize: 5,                          // 分片大小。单位M，可选
+                fileNumLimit: 500,                     // 单次选择上限500个文件，可选
+                webkitdirectory: true                  // 是否文件夹上传，可选
+            });
+        }
+        /* ---------------------------------------------表格弹窗end--------------------------------------------------- */
+
+
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+## 端口
+server:
+  port: 8080
+
+## 文件上传配置
+fileupload:
+  config:
+    # 上传到第几个盘符下
+    upload-dis-index: 0
+    # 存储文件的目录名称
+    upload-dir: 'fileSystem'
+    # 用户文件夹名
+    user-name-dir: 'admin'
+
+## beetl配置
+beetl:
+  suffix: html
+beetlsql:
+  enabled: false
+
+## 数据源配置
+spring:
+  # 数据源配置
+  datasource:
+    # mysql配置
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/easy-file-manager?useUnicode=true&characterEncoding=utf8&characterSetResults=utf8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8
+    username: root
+    password: root
+    # druid配置
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 30000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      test-while-idle: true
+      test-on-borrow: true
+      test-on-return: false
+      validation-query: SELECT 'x'
+      remove-abandoned: false
+      remove-abandoned-timeout-millis: 1800
+      filters: stat,wall
+      stat-view-servlet:
+        url-pattern: /druid/*
+        reset-enable: true
+        login-username: admin
+        login-password: admin
+      aop-patterns: com.efm.*.service.*
+  #      pool-prepared-statements: false
+  #      max-pool-prepared-statement-per-connection-size: 20
+  # jackson配置
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy/MM/dd HH:mm:ss
+
+## Mybatis-plus配置
+mybatis-plus:
+  mapper-locations: classpath:com/efw/**/*Mapper.xml
+  typeAliasesPackage: com.efm.**.entity
+  global-config:
+    id-type: 0
+    field-strategy: 1
+    db-column-underline: true
+    logic-delete-value: 1
+    logic-not-delete-value: 0
+    banner: false
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.efm.system.mapper.SysFolderMapper">
+
+    <select id="listChildren" resultType="com.efm.system.entity.SysFolder">
+        SELECT u2.folder_id, u2.folder_name
+        FROM(
+             SELECT
+                @ids AS p_ids,
+                (SELECT @ids := GROUP_CONCAT(folder_id) FROM sys_folder WHERE FIND_IN_SET(folder_parent_id, @ids)) AS c_ids,
+                @l := @l+1 AS LEVEL
+             FROM sys_folder, (SELECT @ids := #{folderId}, @l := 0 ) b
+             WHERE @ids IS NOT NULL
+            ) u1
+        JOIN sys_folder u2
+        ON FIND_IN_SET(u2.folder_id, u1.p_ids)
+    </select>
+
+</mapper>
